@@ -9,13 +9,15 @@ import certifi
 import ssl
 import math
 import collections
+from pricelistener import PriceListener
+from buytheo import BuyTheo
 
 class BitstampWss:
 
     WSS_URL = 'wss://ws.bitstamp.net'
     ORDER_BOOK_URL = 'https://www.bitstamp.net/api/v2/order_book/btcusd?group=1'
 
-    HEARTBEAT_TIMEOUT = 2
+    HEARTBEAT_TIMEOUT = 5
 
     def __init__(self):
         
@@ -27,6 +29,9 @@ class BitstampWss:
         self.asks = {}
         self.data_buffer = []
         self.is_fetched = False
+
+        self.pricelistener = PriceListener()
+        self.buytheo = BuyTheo()
 
     async def send_json(self, websocket, event):
         event_payload = json.dumps(event)
@@ -220,6 +225,9 @@ class BitstampWss:
                     
             print('best bids')
 
+            self.pricelistener.on_price_update(best_bids, best_offers)
+            self.buytheo.on_price_update(best_bids, best_offers)
+
             if float(best_bid[0]) >= float(best_offer[0]):
                 print('CROSSING!  This can not be correct!')
                 self.is_running = False
@@ -229,9 +237,7 @@ class BitstampWss:
             print('')
                 
     async def run_event_loop(self):
-
         try:
-
             async with websockets.connect(self.WSS_URL, ssl=ssl.create_default_context(cafile=certifi.where())) as websocket:
 
                 await self.on_open(websocket)
