@@ -45,6 +45,7 @@ class PostOrder:
                   timestamp + \
                   'v2' + \
                   payload_str
+        
         message = message.encode('utf-8')
 
         api_secret = self.apikey['secret'].encode('utf-8')
@@ -67,6 +68,7 @@ class PostOrder:
             headers=headers,
             data=payload_str.encode('utf-8')
         )
+
 
         with urllib.request.urlopen(api_request, context=ssl.create_default_context(cafile=certifi.where())) as api_call:
             status_code = api_call.getcode()
