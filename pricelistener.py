@@ -11,16 +11,13 @@ import time
 class PriceListener:
     MAXRANGE = 100
 
-    EDGE = 0.02
+    EDGE = 0.05
     
-    MIN_QUANTITY = 0.01
-
-    MIN_SAMPLES = 25
+    MIN_SAMPLES = 50
 
     def __init__(self):
         self.theo_buffer = []
         self.held_price = 0.0
-        self.held_quantity = 0.0
         self.price_log = open('price_stat.log', 'w')
 
     def on_price_update(self, bid, offer):
@@ -46,30 +43,27 @@ class PriceListener:
             print("mean = %f" % mean_theo)
             print("stdev = %f" % sdev_theo)
 
-            if self.held_quantity > 0.0:
-                if theo > self.held_price:
-                    delta = (theo - self.held_price)/sdev_theo
-                    if delta > self.EDGE:
-                        self.price_log.write('SELL, %f, %f, %f, %f\n' % (time.time(), theo, self.held_quantity, delta))
-                        self.held_price = 0.0
-                        self.held_quantity = 0.0
-                    else:
-                        print("looking for price >= %f" % (self.held_price+(sdev_theo*self.EDGE)))
-                        print("sell delta = %f" % delta)
+            if theo > self.held_price:
+                delta = (theo - self.held_price)/sdev_theo
+                if delta > self.EDGE:
+                    print('Looking BULLISH')
+                    self.price_log.write('SELL, %f, %f, %f\n' % (time.time(), theo, delta))
+                    self.held_price = 0.0
+                    self.held_quantity = 0.0
                 else:
-                    print('holding at %f' % self.held_price)
+                    print("looking for price >= %f" % (self.held_price+(sdev_theo*self.EDGE)))
+                    print("sell delta = %f" % delta)
             else:
                 if theo < mean_theo:
                     delta = (mean_theo - theo)/sdev_theo
                     if delta > self.EDGE:
-                        self.price_log.write('BUY, %f, %f, %f, %f\n' % (time.time(), theo, self.MIN_QUANTITY, delta))
+                        print('Looking BEARISH')
+                        self.price_log.write('BUY, %f, %f, %f\n' % (time.time(), theo, delta))
                         self.held_price = theo
-                        self.held_quantity = self.MIN_QUANTITY
                     else:
                         print("looking for price >= %f" % (theo-(sdev_theo*self.EDGE)))
                         print("buy delta = %f" % delta)
                         
-
             self.price_log.flush()
         
     def calc_theo(self, bid, offer):
