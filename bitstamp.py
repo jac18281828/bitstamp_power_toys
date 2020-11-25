@@ -213,8 +213,6 @@ class BitstampWss:
                     
             print('best bids')
 
-            self.pricelistener.on_price_update(best_bids, best_offers)
-
             best_bid = best_bids[0]
             best_offer = best_offers[NBEST-1]
 
@@ -223,6 +221,15 @@ class BitstampWss:
             if float(best_bid[0]) >= float(best_offer[0]):
                 print('CROSSING!  This can not be correct!')
                 self.is_running = False
+
+            self.pricelistener.on_price_update(best_bids, best_offers)
+
+            if self.pricelistener.get_theo() > float(best_offer[0]):
+                print('Theo is a SELLER, quantity = %0.3f' % float(best_offer[1]))
+            else:
+                if self.pricelistener.get_theo() < float(best_bid[0]):
+                    print('Theo is a BUYER, quantity = %0.3f' % float(best_bid[1]))
+                
 
             print('')
             print('')
