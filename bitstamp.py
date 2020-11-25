@@ -10,7 +10,6 @@ import ssl
 import math
 import collections
 from pricelistener import PriceListener
-from buytheo import BuyTheo
 
 class BitstampWss:
 
@@ -31,7 +30,6 @@ class BitstampWss:
         self.is_fetched = False
 
         self.pricelistener = PriceListener()
-        self.buytheo = BuyTheo()
 
     async def send_json(self, websocket, event):
         event_payload = json.dumps(event)
@@ -45,35 +43,27 @@ class BitstampWss:
     async def on_subscription(self, websocket, message):
         print('subscribed: %s' % message)
 
+    async def on_entry_update(self, entry_map, payload):
+        for entry in payload:
+            price = float(entry[0])
+            qty   = float(entry[1])
+
+            priceLevel = entry[0]
+                
+            if math.isclose(qty, 0.0):
+                if priceLevel in entry_map:
+                    del entry_map[priceLevel]
+            else:
+                entry_map[priceLevel] = qty
+
     async def update_order_book(self, book):
         update_time = int(book['microtimestamp'])
         if update_time > self.microtimestamp:
             self.timestamp = int(book['timestamp'])
             self.microtimestamp = update_time
-            for bid in book['bids']:
-                price = float(bid[0])
-                qty   = float(bid[1])
 
-                priceLevel = str(bid[0])
-
-                if math.isclose(qty, 0.0):
-                    if priceLevel in self.bids:
-                        del self.bids[priceLevel]
-                else:
-                    self.bids[priceLevel] = qty
-
-            for ask in book['asks']:
-                price = float(ask[0])
-                qty   = float(ask[1])
-
-                priceLevel = str(ask[0])
-
-                if math.isclose(qty, 0.0):
-                    if priceLevel in self.asks:
-                        del self.asks[priceLevel]
-                else:
-                    self.asks[priceLevel] = qty
-                        
+            await self.on_entry_update(self.bids, book['bids'])
+            await self.on_entry_update(self.asks, book['asks'])
 
     async def on_data(self, websocket, event):
         if self.data_buffer is not None:
@@ -208,25 +198,27 @@ class BitstampWss:
     async def print_best(self):
         if self.data_buffer is None:
 
-            best_bid = None
-            best_offer = None
+            NBEST=3
             
             print('\t\tbest asks')
-            best_offers = reversed(sorted(self.asks.items(), key=lambda level: float(level[0]))[0:4])
+            best_offers = reversed(sorted(self.asks.items(), key=lambda level: float(level[0]))[:NBEST])
+            best_offers = [k for k in best_offers]
             for level in best_offers:
                 print ('\t\t%s' % str(level))                                
-                best_offer = level
                     
-            best_bids = sorted(self.bids.items(), reverse=True, key=lambda level: float(level[0]))[0:4]
+            best_bids = sorted(self.bids.items(), reverse=True, key=lambda level: float(level[0]))[:NBEST]
+            best_bids = [k for k in best_bids]
             for level in best_bids:
                 print (level)
-                if best_bid is None:
-                    best_bid = level
                     
             print('best bids')
 
             self.pricelistener.on_price_update(best_bids, best_offers)
-            self.buytheo.on_price_update(best_bids, best_offers)
+
+            best_bid = best_bids[0]
+            best_offer = best_offers[NBEST-1]
+
+            print('bb=%s, bo=%s' % (best_bid, best_offer))
 
             if float(best_bid[0]) >= float(best_offer[0]):
                 print('CROSSING!  This can not be correct!')
