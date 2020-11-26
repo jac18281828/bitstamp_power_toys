@@ -1,4 +1,5 @@
 *.json
 *.log
+*.gpg
 wss/
 __pycache__/

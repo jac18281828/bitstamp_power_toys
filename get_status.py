@@ -10,16 +10,16 @@ import urllib.request
 from urllib.parse import urlencode
 
 
-# Post a limit order in bitcoin
-class PostOrder:
+class PostStatus:
 
-    BTCUSD_ENDPOINT = 'https://www.bitstamp.net/api/v2/buy/btcusd/'
+    BTCUSD_ENDPOINT = 'https://www.bitstamp.net/api/v2/order_status/'
 
     def __init__(self, apikeyfile):
+
         with open(apikeyfile, 'r') as apikeyfile:
             self.apikey = json.load(apikeyfile)
 
-    def post_order(self, price, quantity):
+    def post_status(self, id):
 
         api_key = self.apikey['key']
 
@@ -29,9 +29,7 @@ class PostOrder:
         payload = {
             'key': api_key,
             'nonce': nonce,
-            'amount': quantity,
-            'price': price,
-            'ioc_order': 'True'
+            'id': id
         }
 
         payload_str = urlencode(payload)
@@ -45,7 +43,6 @@ class PostOrder:
                   timestamp + \
                   'v2' + \
                   payload_str
-        
         message = message.encode('utf-8')
 
         api_secret = self.apikey['secret'].encode('utf-8')
@@ -67,21 +64,22 @@ class PostOrder:
             self.BTCUSD_ENDPOINT,
             headers=headers,
             data=payload_str.encode('utf-8')
-        )
-
+        );
 
         with urllib.request.urlopen(api_request, context=ssl.create_default_context(cafile=certifi.where())) as api_call:
             status_code = api_call.getcode()
             api_result = api_call.read()
-            headers = api_call.info()                        
+            headers = api_call.info()            
             
             if not status_code == 200:
                 print(r)
                 print(api_result)
                 raise Exception('Status code not 200')
 
+        
             string_to_sign = (nonce + timestamp + headers.get('Content-Type')).encode('utf-8') + api_result
             signature_check = hmac.new(api_secret, msg=string_to_sign, digestmod=hashlib.sha256).hexdigest()
+
             if not headers.get('X-Server-Auth-Signature') == signature_check:
                 raise Exception('Signatures do not match')
 
@@ -91,14 +89,13 @@ if __name__ == '__main__':
     if len(sys.argv) > 2:
         try:
             apikeyfile = sys.argv[1]
-            price = sys.argv[2]
-            po = PostOrder(apikeyfile)
-            po.post_order(float(price), 0.005)            
+            id = sys.argv[2]
+            po = PostStatus(apikeyfile)
+            po.post_status(id)
             sys.exit(0)
         except Exception as e:
             print('Failed. '+repr(e))
+            sys.exit(1)
     else:
-        print('apikey file and price are required')
+        print('apikey file and order id are required')
         sys.exit(1)
-
-
