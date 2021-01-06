@@ -61,8 +61,6 @@ class PostOrder:
             'Content-Type': content_type
         }
 
-        #print('payload = %s' % payload_str)
-
         api_request = urllib.request.Request(
             self.BTCUSD_ENDPOINT,
             headers=headers,
